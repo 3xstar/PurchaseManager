@@ -41,7 +41,7 @@ CREATE TABLE Products (
     category_id INT,
     unit_id INT,
     count DECIMAL(10,2) DEFAULT 0,
-    add_date DATE DEFAULT CURRENT_DATE,
+    add_date DATE DEFAULT (CURDATE()),
     expire_date DATE,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES Categories(id) ON DELETE SET NULL,
@@ -54,7 +54,7 @@ CREATE TABLE Products (
 CREATE TABLE Shop_List (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
-    create_date DATE DEFAULT CURRENT_DATE,
+    create_date DATE DEFAULT (CURDATE()),
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
