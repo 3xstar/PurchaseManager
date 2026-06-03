@@ -19,6 +19,10 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 # Строка подключения
 DATABASE_URL = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 
+# База данных для тестов
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/test_purchase_manager')
+
+
 # Настройка приложения
 APP_NAME = os.getenv("APP_NAME", "Менеджер покупок")
 APP_VERSION = os.getenv("APP_VERSION", "0.0.1")
