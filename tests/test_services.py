@@ -1,4 +1,4 @@
-from services import UserService, ProductService, ShopListService
+from modules_project.services.services import UserService, ProductService, ShopListService
 
 
 def test_user_service(db_session):

@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from config import DATABASE_URL
-from models import Base
+from modules_project.models.models import Base
 
 TEST_DATABASE_URL = DATABASE_URL.replace("purchase_manager", "purchase_manager_test")
 
