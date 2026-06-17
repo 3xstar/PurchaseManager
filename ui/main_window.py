@@ -17,7 +17,7 @@ from PyQt6.QtGui import QColor
 from modules_project.models.models import Products
 from ui.add_product_dialog import AddProductDialog
 from modules_project.services.services import ProductService, ShopListService, UserService
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class MainWindow(QMainWindow):
     def __init__(self, db_session):
@@ -144,24 +144,106 @@ class MainWindow(QMainWindow):
                 
         self.check_expiring_products()
 
+    def validate_product_data(self, data):
+        name = data.get("name", "").strip()
+        if not name:
+            return "Название продукта не может быть пустым."
+        if len(name) > 150:
+            return "Название продукта не может превышать 150 символов."
+
+        category = data.get("category", "").strip()
+        if category and any(char.isdigit() for char in category):
+            return "Категория не может содержать цифры."
+        if len(category) > 100:
+            return "Название категории не может превышать 100 символов."
+
+        amount_str = data.get("amount", "").strip().replace(",", ".")
+        if not amount_str:
+            return "Количество не может быть пустым."
+        try:
+            amount = float(amount_str)
+            if amount < 0:
+                return "Количество не может быть отрицательным."
+        except ValueError:
+            return "Количество должно быть числом."
+
+        expiry_str = data.get("expiry", "").strip()
+        if expiry_str:
+            try:
+                expiry_date = datetime.strptime(expiry_str, "%d.%m.%Y").date()
+                if expiry_date <= datetime.now().date():
+                    return "Срок годности должен быть строго больше текущей даты."
+            except ValueError:
+                return "Неверный формат даты срока годности. Используйте ДД.ММ.ГГГГ."
+
+        data["amount"] = str(amount)
+        return None
+
     def add_product(self):
         dialog = AddProductDialog()
         if dialog.exec():
             data = dialog.product_data
             
+            error_msg = self.validate_product_data(data)
+            if error_msg:
+                QMessageBox.warning(self, "Ошибка ввода", error_msg)
+                return
+
             try:
-                new_product = self.product_service.create_product(
+                self.product_service.create_product(
                     user_id=self.current_user_id,
-                    name=data["name"],
+                    name=data["name"].strip(),
                     count=float(data["amount"]),
-                    category_title=data["category"],
-                    expire_date_str=data["expiry"]
+                    category_title=data["category"].strip() if data["category"].strip() else None,
+                    expire_date_str=data["expiry"] if data["expiry"].strip() else None
                 )
-                
                 self.load_products_from_db()
-                
             except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить продукт: {e}")
+                QMessageBox.critical(self, "Ошибка базы данных", f"Не удалось сохранить продукт: {e}")
+
+    def edit_product(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+
+        current_id = int(self.table.item(row, 0).text())
+        current_name = self.table.item(row, 1).text()
+        current_category = self.table.item(row, 2).text()
+        current_amount = self.table.item(row, 3).text()
+        current_expiry = self.table.item(row, 5).text()
+
+        dialog = AddProductDialog()
+        
+        dialog.name_input.setText(current_name)
+        dialog.category_input.setText(current_category if current_category != "Без категории" else "")
+        dialog.amount_input.setText(current_amount)
+        
+        if current_expiry:
+            try:
+                date_obj = QDate.fromString(current_expiry, "dd.MM.yyyy")
+                dialog.expiry_input.setDate(date_obj)
+            except Exception:
+                pass
+
+        if dialog.exec():
+            data = dialog.product_data
+            
+            error_msg = self.validate_product_data(data)
+            if error_msg:
+                QMessageBox.warning(self, "Ошибка ввода", error_msg)
+                return
+
+            try:
+                self.product_service.update_product(
+                    product_id=current_id,
+                    name=data["name"].strip(),
+                    count=float(data["amount"]),
+                    category_title=data["category"].strip() if data["category"].strip() else None,
+                    expire_date_str=data["expiry"] if data["expiry"].strip() else None
+                )
+                self.load_products_from_db()
+            except Exception as e:
+                QMessageBox.critical(self, "Ошибка базы данных", f"Не удалось обновить продукт: {e}")
 
     def delete_product(self):
         row = self.table.currentRow()
@@ -186,46 +268,8 @@ class MainWindow(QMainWindow):
                             self.load_products_from_db()
                     except Exception as e:
                         self.db.rollback()
-                        QMessageBox.critical(self, "Ошибка", f"Не удалось удалить: {e}")
-
-    def edit_product(self):
-        row = self.table.currentRow()
-        if row < 0:
-            return
-
-        current_id = int(self.table.item(row, 0).text())
-        current_name = self.table.item(row, 1).text()
-        current_category = self.table.item(row, 2).text()
-        current_amount = self.table.item(row, 3).text()
-        current_expiry = self.table.item(row, 5).text()
-
-        dialog = AddProductDialog()
-        
-        dialog.name_input.setText(current_name)
-        dialog.category_input.setText(current_category if current_category != "Без категории" else "")
-        dialog.amount_input.setText(current_amount)
-        
-        if current_expiry:
-            try:
-                date_obj = QDate.fromString(current_expiry, "dd.MM.yyyy")
-                dialog.expiry_input.setDate(date_obj)
-            except:
-                pass
-
-        if dialog.exec():
-            data = dialog.product_data
-            try:
-                self.product_service.update_product(
-                    product_id=current_id,
-                    name=data["name"],
-                    count=float(data["amount"]),
-                    category_title=data["category"],
-                    expire_date_str=data["expiry"]
-                )
-                self.load_products_from_db()
-            except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось обновить: {e}")
-
+                        QMessageBox.critical(self, "Ошибка базы данных", f"Не удалось удалить: {e}")
+                        
     def check_expiring_products(self):
         self.expiring_table.setRowCount(0)
         today = datetime.now().date()

@@ -24,7 +24,6 @@ class ProductService:
     def create_product(self, user_id: int, name: str, count: float = 0.0, category_title: str = None, expire_date_str: str = None) -> Products:
         from datetime import datetime
         
-        # 1. Обработка категории
         category_id = None
         if category_title:
             cat = self.db.query(Categories).filter(Categories.title == category_title).first()
@@ -34,7 +33,6 @@ class ProductService:
                 self.db.flush() 
             category_id = cat.id
 
-        # 2. Обработка даты истечения срока
         expire_date_obj = None
         if expire_date_str:
             try:
@@ -57,24 +55,6 @@ class ProductService:
     def get_products_by_user(self, user_id: int) -> list[Products]:
         return self.db.query(Products).filter(Products.user_id == user_id).all()
         
-    def update_product(self, product_id: int, **kwargs) -> bool:
-        product = self.db.query(Products).filter(Products.id == product_id).first()
-        if product:
-            for key, value in kwargs.items():
-                if hasattr(product, key):
-                    setattr(product, key, value)
-            self.db.commit()
-            return True
-        return False
-
-    def delete_product(self, product_id: int) -> bool:
-        product = self.db.query(Products).filter(Products.id == product_id).first()
-        if product:
-            self.db.delete(product)
-            self.db.commit()
-            return True
-        return False
-
     def update_product(self, product_id: int, name: str, count: float, category_title: str = None, expire_date_str: str = None) -> bool:
         from datetime import datetime
         
@@ -85,7 +65,6 @@ class ProductService:
         product.name = name
         product.count = count
         
-        # Обновление категории
         if category_title:
             cat = self.db.query(Categories).filter(Categories.title == category_title).first()
             if not cat:
@@ -96,7 +75,6 @@ class ProductService:
         else:
             product.category_id = None
 
-        # Обновление даты
         if expire_date_str:
             try:
                 product.expire_date = datetime.strptime(expire_date_str, "%d.%m.%Y").date()
@@ -107,6 +85,14 @@ class ProductService:
 
         self.db.commit()
         return True
+
+    def delete_product(self, product_id: int) -> bool:
+        product = self.db.query(Products).filter(Products.id == product_id).first()
+        if product:
+            self.db.delete(product)
+            self.db.commit()
+            return True
+        return False
 
 class ShopListService:
     def __init__(self, db: Session):
